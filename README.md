@@ -337,10 +337,6 @@ export PYTHONPATH=.    # Linux/Mac
 ### `GEMINI_API_KEY not found`
 Create `.env` file with your API key.
 
-### API Rate Limits (429)
-- Wait for quota reset (daily at midnight Pacific)
-- Create new API key at [AI Studio](https://aistudio.google.com/apikey)
-
 ---
 
 ## 📚 Documentation
@@ -348,7 +344,3 @@ Create `.env` file with your API key.
 For detailed architecture documentation, see [`docs/projectdocumentation.md`](docs/projectdocumentation.md).
 
 ---
-
-## License
-
-MIT License - See [LICENSE](LICENSE) file.
