@@ -1,55 +1,55 @@
 {
-  "product_name": "NightRenew Retinol Serum",
+  "product_name": "GlowBoost Vitamin C Serum",
   "faqs": [
     {
       "category": "Product Info",
-      "question": "What is the product name?",
-      "answer": "The product name is NightRenew Retinol Serum."
+      "question": "What is the GlowBoost Vitamin C Serum?",
+      "answer": "GlowBoost Vitamin C Serum is a skincare product designed for brightening and fading dark spots. It contains 10% Vitamin C."
     },
     {
       "category": "Product Info",
-      "question": "What is the concentration of Retinol in this serum?",
-      "answer": "The concentration of Retinol in this serum is 0.5%."
+      "question": "What is the concentration of Vitamin C in this serum?",
+      "answer": "The concentration of Vitamin C in the GlowBoost Vitamin C Serum is 10%."
     },
     {
       "category": "Ingredients",
-      "question": "What are the key ingredients in the NightRenew Retinol Serum?",
-      "answer": "The key ingredients are Retinol and Ceramides."
+      "question": "What are the key ingredients in GlowBoost Vitamin C Serum?",
+      "answer": "The key ingredients in GlowBoost Vitamin C Serum are Vitamin C and Hyaluronic Acid."
     },
     {
       "category": "Usage",
       "question": "How many drops of the serum should be applied?",
-      "answer": "Apply 2–3 drops of the serum."
+      "answer": "Apply 2-3 drops of the serum."
     },
     {
       "category": "Usage",
-      "question": "When should the NightRenew Retinol Serum be used?",
-      "answer": "The NightRenew Retinol Serum should be used at night."
+      "question": "When is the recommended time to apply the GlowBoost Vitamin C Serum?",
+      "answer": "The recommended time to apply the GlowBoost Vitamin C Serum is in the morning."
     },
     {
       "category": "Usage",
-      "question": "What should be applied after using the serum?",
-      "answer": "Apply moisturizer after using the serum."
+      "question": "What is the recommended application method for the serum in the morning?",
+      "answer": "In the morning, apply 2-3 drops of the serum before sunscreen."
     },
     {
       "category": "Safety",
-      "question": "What are the potential side effects of using this serum?",
-      "answer": "Potential side effects include Dryness and Redness."
+      "question": "What is a potential side effect for sensitive skin when using this serum?",
+      "answer": "A potential side effect for sensitive skin when using this serum is mild tingling."
     },
     {
       "category": "Safety",
-      "question": "What warnings are associated with this product?",
-      "answer": "The warnings associated with this product are Dryness and Redness."
+      "question": "Are there any specific warnings associated with this product?",
+      "answer": "A potential side effect includes mild tingling for sensitive skin."
     },
     {
-      "category": "Safety",
-      "question": "Is this serum suitable for use during pregnancy?",
-      "answer": "This serum is not suitable for use during pregnancy."
+      "category": "Usage",
+      "question": "Is it recommended to use sunscreen after applying this serum?",
+      "answer": "Yes, it is recommended to apply sunscreen after applying this serum in the morning."
     },
     {
       "category": "Product Info",
-      "question": "What is the price of the NightRenew Retinol Serum?",
-      "answer": "The price of the NightRenew Retinol Serum is ₹899.0."
+      "question": "What is the price of GlowBoost Vitamin C Serum?",
+      "answer": "The price of GlowBoost Vitamin C Serum is ₹699.0."
     }
   ]
 }

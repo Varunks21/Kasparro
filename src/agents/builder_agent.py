@@ -329,15 +329,83 @@ Return a list of FAQ Items with category, question, and accurate answer.
                 faqs=result.items
             )
             
-            self.logger.info(f"✓ FAQ page assembled: {len(result.items)} Q&As")
+            self.logger.info(f"[OK] FAQ page assembled via LLM: {len(result.items)} Q&As")
             for item in result.items[:3]:
                 self.logger.debug(f"  - [{item.category}] {item.question[:40]}...")
             
             return page
             
         except Exception as e:
-            self.logger.error(f"FAQ page build failed: {e}")
-            return None
+            self.logger.warning(f"LLM FAQ build failed, using rule-based fallback: {e}")
+            return self._build_faq_page_fallback(product, questions)
+            
+    def _build_faq_page_fallback(
+        self,
+        product: ProductData,
+        questions: List[str]
+    ) -> FAQPage:
+        """
+        Rule-based fallback for FAQ page generation when LLM is unavailable.
+        Generates answers based on product data patterns.
+        """
+        self.logger.info("Using rule-based FAQ page generation")
+        
+        faqs = []
+        
+        # Pre-built answer templates based on question patterns
+        for q in questions[:10]:  # Limit to 10 FAQs
+            q_lower = q.lower()
+            
+            # Determine category and answer based on question patterns
+            if any(kw in q_lower for kw in ["what is", "what are the key", "concentration"]):
+                category = "Product Info"
+                if "concentration" in q_lower:
+                    answer = f"{product.name} contains {product.concentration} of active ingredients for optimal effectiveness."
+                elif "ingredient" in q_lower:
+                    answer = f"The key ingredients are: {', '.join(product.key_ingredients)}."
+                else:
+                    answer = f"{product.name} is a {product.concentration} skincare formulation featuring {', '.join(product.key_ingredients[:2])} for {', '.join(product.benefits[:2]).lower()}."
+                    
+            elif any(kw in q_lower for kw in ["how do i use", "how often", "when", "apply"]):
+                category = "Usage"
+                answer = f"{product.usage_instructions}"
+                
+            elif any(kw in q_lower for kw in ["side effect", "safe", "sensitive", "sunscreen"]):
+                category = "Safety"
+                if product.side_effects:
+                    answer = f"{product.side_effects}. Always perform a patch test before first use."
+                else:
+                    answer = f"This product is formulated for {', '.join(product.skin_type)} skin types. Perform a patch test before first use."
+                    
+            elif any(kw in q_lower for kw in ["price", "cost", "worth", "investment"]):
+                category = "Purchase"
+                answer = f"{product.name} is priced at Rs.{product.price_inr}. It offers professional-grade {product.concentration} formulation with {len(product.key_ingredients)} active ingredients."
+                
+            elif any(kw in q_lower for kw in ["different", "compare", "alternative", "unique"]):
+                category = "Comparison"
+                answer = f"{product.name} stands out with its {product.concentration} concentration and synergistic blend of {', '.join(product.key_ingredients[:2])} for enhanced {product.benefits[0].lower() if product.benefits else 'results'}."
+                
+            elif any(kw in q_lower for kw in ["skin type", "oily", "dry", "combination", "suitable"]):
+                category = "Skin Type"
+                answer = f"{product.name} is specifically formulated for {', '.join(product.skin_type)} skin types."
+                
+            else:
+                category = "Product Info"
+                answer = f"{product.name} contains {product.concentration} with benefits including {', '.join(product.benefits[:2]).lower()}."
+            
+            faqs.append(FAQItem(
+                category=category,
+                question=q,
+                answer=answer
+            ))
+        
+        page = FAQPage(
+            product_name=product.name,
+            faqs=faqs
+        )
+        
+        self.logger.info(f"[OK] FAQ page assembled via fallback: {len(faqs)} Q&As")
+        return page
             
     def _build_comparison_page(
         self,

@@ -181,6 +181,7 @@ class StrategyAgent(BaseAgent):
         
         The agent uses its strategic knowledge to create a
         realistic but inferior competitor for comparison.
+        Falls back to rule-based generation if LLM fails.
         """
         self.logger.info(f"Generating competitor for: {product.name}")
         
@@ -218,16 +219,39 @@ class StrategyAgent(BaseAgent):
         try:
             result = get_structured_data(prompt, CompetitorData)
             
-            self.logger.info(f"✓ Competitor generated: {result.name}")
-            self.logger.debug(f"  - Price: ₹{result.price_inr}")
+            self.logger.info(f"[OK] Competitor generated via LLM: {result.name}")
+            self.logger.debug(f"  - Price: Rs.{result.price_inr}")
             self.logger.debug(f"  - Pros: {result.pros}")
             self.logger.debug(f"  - Cons: {result.cons}")
             
             return result
             
         except Exception as e:
-            self.logger.error(f"Competitor generation failed: {e}")
-            return None
+            self.logger.warning(f"LLM competitor generation failed, using rule-based fallback: {e}")
+            return self._generate_competitor_fallback(product)
+            
+    def _generate_competitor_fallback(self, product: ProductData) -> CompetitorData:
+        """
+        Rule-based fallback for competitor generation when LLM is unavailable.
+        """
+        self.logger.info("Using rule-based competitor generation")
+        
+        # Generate competitor price (20% cheaper)
+        competitor_price = int(product.price_inr * 0.80)
+        
+        # Generate generic competitor ingredients (less effective alternatives)
+        generic_ingredients = ["Ascorbic Acid (5%)", "Glycerin", "Aloe Vera Extract"]
+        
+        competitor = CompetitorData(
+            name="BudgetGlow Basic Serum",
+            price_inr=competitor_price,
+            key_ingredients=generic_ingredients,
+            pros=["Budget-friendly price", "Gentle formula suitable for beginners"],
+            cons=["Lower active concentration (5% vs 10%)", "Missing stabilizing antioxidants"]
+        )
+        
+        self.logger.info(f"[OK] Competitor generated via fallback: {competitor.name}")
+        return competitor
             
     def _generate_faqs(self, product: ProductData) -> Optional[List[str]]:
         """
@@ -235,6 +259,7 @@ class StrategyAgent(BaseAgent):
         
         The agent strategically creates questions that showcase
         the product's strengths and address customer concerns.
+        Falls back to template-based questions if LLM fails.
         """
         self.logger.info(f"Generating FAQ questions for: {product.name}")
         
@@ -297,15 +322,49 @@ class StrategyAgent(BaseAgent):
         try:
             result = get_structured_data(prompt, QuestionList)
             
-            self.logger.info(f"✓ Generated {len(result.questions)} FAQ questions")
+            self.logger.info(f"[OK] Generated {len(result.questions)} FAQ questions via LLM")
             for i, q in enumerate(result.questions[:3], 1):
                 self.logger.debug(f"  - Q{i}: {q[:50]}...")
             
             return result.questions
             
         except Exception as e:
-            self.logger.error(f"FAQ generation failed: {e}")
-            return None
+            self.logger.warning(f"LLM FAQ generation failed, using template fallback: {e}")
+            return self._generate_faqs_fallback(product)
+            
+    def _generate_faqs_fallback(self, product: ProductData) -> List[str]:
+        """
+        Template-based fallback for FAQ generation when LLM is unavailable.
+        Generates 15 product-specific questions using templates.
+        """
+        self.logger.info("Using template-based FAQ generation")
+        
+        questions = [
+            # INFORMATIONAL (3)
+            f"What is {product.name}?",
+            f"What are the key ingredients in {product.name}?",
+            f"What concentration of active ingredients does {product.name} contain?",
+            # USAGE (3)
+            f"How do I use {product.name}?",
+            f"How often should I apply {product.name}?",
+            f"When is the best time to use {product.name}?",
+            # SAFETY (3)
+            f"What are the potential side effects of {product.name}?",
+            f"Is {product.name} safe for sensitive skin?",
+            f"Do I need to use sunscreen with {product.name}?",
+            # PURCHASE (2)
+            f"What is the price of {product.name}?",
+            f"Is {product.name} worth the investment?",
+            # COMPARISON (2)
+            f"What makes {product.name} different from other products?",
+            f"How does {product.name} compare to budget alternatives?",
+            # SKIN TYPE (2)
+            f"What skin types is {product.name} suitable for?",
+            f"Can I use {product.name} if I have oily skin?",
+        ]
+        
+        self.logger.info(f"[OK] Generated {len(questions)} FAQ questions via fallback templates")
+        return questions
             
     def _publish_results(
         self,

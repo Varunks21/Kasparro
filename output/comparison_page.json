@@ -1,11 +1,11 @@
 {
-  "title": "NightRenew Retinol Serum vs GlowEssence Daily Retinol Serum",
-  "competitor_name": "GlowEssence Daily Retinol Serum",
+  "title": "GlowBoost Vitamin C Serum vs Radiance Renewal Brightening Elixir",
+  "competitor_name": "Radiance Renewal Brightening Elixir",
   "comparison_table": [
     {
       "feature": "Price",
-      "our_product": "₹899.0",
-      "competitor_product": "₹759.0",
+      "our_product": "₹699.0",
+      "competitor_product": "₹589.0",
       "verdict": "Winner: Competitor"
     },
     {
@@ -16,28 +16,28 @@
     },
     {
       "feature": "Premium Ingredients",
-      "our_product": "1 premium actives",
+      "our_product": "2 premium actives",
       "competitor_product": "2 premium actives",
-      "verdict": "Winner: Competitor"
+      "verdict": "Winner: Us"
     },
     {
       "feature": "Active Concentration",
-      "our_product": "0.5% Retinol",
+      "our_product": "10% Vitamin C",
       "competitor_product": "Not specified",
       "verdict": "Winner: Us (Transparency)"
     },
     {
       "feature": "Key Strengths",
-      "our_product": "Anti-aging, Reduces fine lines",
-      "competitor_product": "Gentle formula, Hydrating",
+      "our_product": "Brightening, Fades dark spots",
+      "competitor_product": "Affordable price point, Suitable for sensitive skin",
       "verdict": "Winner: Us"
     },
     {
       "feature": "Drawbacks",
-      "our_product": "Dryness, Redness",
-      "competitor_product": "Lower active concentration, Missing ceramides for barrier support",
+      "our_product": "Mild tingling for sensitive skin",
+      "competitor_product": "Lower Vitamin C concentration, Lacks antioxidants for stability",
       "verdict": "Winner: Us"
     }
   ],
-  "summary_verdict": "NightRenew Retinol Serum offers superior value with clinically effective 0.5% Retinol, 2 premium active ingredients, compared to GlowEssence Daily Retinol Serum's basic formulation."
+  "summary_verdict": "GlowBoost Vitamin C Serum offers superior value with clinically effective 10% Vitamin C, 2 premium active ingredients, compared to Radiance Renewal Brightening Elixir's basic formulation."
 }
