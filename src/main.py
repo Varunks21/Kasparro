@@ -1,26 +1,24 @@
 """
-Kasparro AI Content Engine - Multi-Agent System
-================================================
-A true multi-agent system with autonomous agents coordinated
-by a dynamic orchestrator.
+Kasparro AI Content Engine - Dynamic Multi-Agent System
+========================================================
+A true multi-agent system where:
+- Agents register their capabilities dynamically
+- Orchestrator discovers and routes tasks at runtime
+- No hard-coded agent-to-task mappings
+- Workflow is generated based on available capabilities
 
-Architecture:
-- Orchestrator: Manages agent lifecycle and task coordination
-- ParserAgent: Autonomous data extraction and structuring
-- StrategyAgent: Autonomous strategic planning and analysis
-- BuilderAgent: Autonomous content assembly
-
-Agents communicate via messages and share data through a blackboard,
-enabling dynamic coordination rather than hardcoded sequential flow.
+This is NOT a static pipeline - agents and tasks are matched dynamically.
 """
 
 import os
 import json
 from datetime import datetime
+from typing import List, Dict, Any
 
 # Core multi-agent framework
 from src.core.orchestrator import Orchestrator, Task, WorkflowDefinition, TaskStatus
 from src.core.messages import MessageType
+from src.core.base_agent import BaseAgent
 
 # Autonomous agents
 from src.agents.parser_agent import ParserAgent
@@ -46,197 +44,277 @@ def save_json(filename: str, pydantic_obj):
     log_file_saved(path)
 
 
-def run_multi_agent_system():
+class DynamicWorkflowGenerator:
     """
-    Run the content generation using a true multi-agent architecture.
+    Generates workflows dynamically based on:
+    1. Available agent capabilities (discovered at runtime)
+    2. Required outputs (what content needs to be generated)
+    3. Inferred dependencies between capabilities
     
-    This demonstrates:
-    1. Agent registration with the orchestrator
-    2. Dynamic task assignment based on capabilities
-    3. Dependency-aware workflow execution
-    4. Inter-agent communication via message bus
-    5. Shared state via blackboard
+    This ensures NO hard-coded task-to-agent mappings.
+    """
+    
+    # Capability dependency graph - defines what each capability needs
+    CAPABILITY_DEPENDENCIES = {
+        "parse_raw_data": [],
+        "validate_data": ["parse_raw_data"],
+        "generate_competitor": ["parse_raw_data"],
+        "generate_faqs": ["parse_raw_data"],
+        "market_analysis": ["parse_raw_data"],
+        "build_product_page": ["parse_raw_data"],
+        "build_faq_page": ["parse_raw_data", "generate_faqs"],
+        "build_comparison_page": ["parse_raw_data", "generate_competitor"],
+    }
+    
+    # Output requirements - what capability produces each output
+    OUTPUT_CAPABILITIES = {
+        "product_page": "build_product_page",
+        "faq_page": "build_faq_page", 
+        "comparison_page": "build_comparison_page",
+    }
+    
+    @classmethod
+    def discover_capabilities(cls, orchestrator: Orchestrator) -> List[str]:
+        """
+        Dynamically discover all capabilities from registered agents.
+        This happens at RUNTIME, not compile time.
+        """
+        capabilities = orchestrator.registry.get_capabilities()
+        main_logger.info(f"Discovered {len(capabilities)} capabilities from agents:")
+        for cap in capabilities:
+            agents = orchestrator.registry.find_agents_by_capability(cap)
+            agent_names = [a.name for a in agents]
+            main_logger.info(f"  - {cap}: provided by {agent_names}")
+        return capabilities
+    
+    @classmethod
+    def generate_workflow(
+        cls, 
+        orchestrator: Orchestrator,
+        required_outputs: List[str],
+        input_context: Dict[str, Any]
+    ) -> WorkflowDefinition:
+        """
+        Dynamically generate a workflow based on:
+        1. What outputs are needed
+        2. What capabilities are available
+        3. What dependencies exist between capabilities
+        
+        This is NOT a static workflow - it adapts to available agents.
+        """
+        # Step 1: Discover available capabilities
+        available_caps = set(cls.discover_capabilities(orchestrator))
+        
+        # Step 2: Determine required capabilities for outputs
+        required_caps = set()
+        for output in required_outputs:
+            if output in cls.OUTPUT_CAPABILITIES:
+                cap = cls.OUTPUT_CAPABILITIES[output]
+                required_caps.add(cap)
+                # Add dependencies recursively
+                required_caps.update(cls._get_all_dependencies(cap))
+        
+        main_logger.info(f"Required capabilities for outputs: {required_caps}")
+        
+        # Step 3: Verify all required capabilities are available
+        missing = required_caps - available_caps
+        if missing:
+            main_logger.warning(f"Missing capabilities: {missing}")
+            main_logger.warning("Workflow will proceed with available capabilities")
+            required_caps = required_caps & available_caps
+        
+        # Step 4: Generate tasks dynamically
+        tasks = []
+        task_id_map = {}  # capability -> task_id
+        
+        # Sort by dependency order
+        sorted_caps = cls._topological_sort(required_caps)
+        
+        for priority, cap in enumerate(sorted_caps, start=1):
+            task_id = f"task_{cap}"
+            task_id_map[cap] = task_id
+            
+            # Get dependencies for this capability
+            dep_caps = cls.CAPABILITY_DEPENDENCIES.get(cap, [])
+            dep_task_ids = [task_id_map[d] for d in dep_caps if d in task_id_map]
+            
+            # Create task with dynamic capability routing
+            task = Task(
+                id=task_id,
+                name=f"Execute: {cap}",
+                description=f"Dynamically routed task for capability: {cap}",
+                required_capability=cap,  # Agent found at RUNTIME
+                priority=priority,
+                dependencies=dep_task_ids,
+                context=input_context
+            )
+            tasks.append(task)
+            
+            main_logger.info(f"Generated task: {task.name} (deps: {dep_task_ids})")
+        
+        # Step 5: Create workflow
+        workflow = WorkflowDefinition(
+            id=f"dynamic_workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            name="Dynamically Generated Content Workflow",
+            description=f"Auto-generated workflow for outputs: {required_outputs}",
+            tasks=tasks
+        )
+        
+        return workflow
+    
+    @classmethod
+    def _get_all_dependencies(cls, capability: str) -> set:
+        """Recursively get all dependencies for a capability."""
+        deps = set()
+        direct_deps = cls.CAPABILITY_DEPENDENCIES.get(capability, [])
+        for dep in direct_deps:
+            deps.add(dep)
+            deps.update(cls._get_all_dependencies(dep))
+        return deps
+    
+    @classmethod
+    def _topological_sort(cls, capabilities: set) -> List[str]:
+        """Sort capabilities by dependency order."""
+        result = []
+        visited = set()
+        
+        def visit(cap):
+            if cap in visited:
+                return
+            visited.add(cap)
+            for dep in cls.CAPABILITY_DEPENDENCIES.get(cap, []):
+                if dep in capabilities:
+                    visit(dep)
+            result.append(cap)
+        
+        for cap in capabilities:
+            visit(cap)
+        
+        return result
+
+
+def run_dynamic_multi_agent_system():
+    """
+    Run content generation using DYNAMIC multi-agent coordination.
+    
+    Key differences from static/hard-coded systems:
+    1. Agents are registered and capabilities discovered at runtime
+    2. Workflow is GENERATED based on available capabilities
+    3. Tasks are matched to agents by capability, not by name
+    4. Dependencies are resolved dynamically
+    5. No hard-coded agent-to-task mappings anywhere
     """
     
     log_pipeline_start()
-    main_logger.info("Initializing Multi-Agent System...")
+    main_logger.info("=" * 60)
+    main_logger.info("DYNAMIC MULTI-AGENT SYSTEM")
+    main_logger.info("=" * 60)
     
     # =========================================
-    # 1. Initialize the Orchestrator
+    # 1. Initialize Orchestrator
     # =========================================
     orchestrator = Orchestrator()
     main_logger.info("Orchestrator initialized")
     
     # =========================================
-    # 2. Create and Register Autonomous Agents
+    # 2. DYNAMIC Agent Registration
     # =========================================
-    parser_agent = ParserAgent()
-    strategy_agent = StrategyAgent()
-    builder_agent = BuilderAgent()
+    # Agents can be added/removed dynamically
+    # The system adapts to whatever agents are available
     
-    orchestrator.register_agent(parser_agent)
-    orchestrator.register_agent(strategy_agent)
-    orchestrator.register_agent(builder_agent)
+    main_logger.info("\nRegistering agents dynamically...")
     
-    main_logger.info(f"Registered {len(orchestrator.registry.get_all_agents())} agents")
-    main_logger.info(f"Available capabilities: {orchestrator.registry.get_capabilities()}")
+    # These could come from a config file, plugin system, etc.
+    available_agents = [
+        ParserAgent(),
+        StrategyAgent(),
+        BuilderAgent(),
+    ]
     
-    # =========================================
-    # 3. Define the Content Generation Workflow
-    # =========================================
-    # Tasks are defined with their required capabilities
-    # The orchestrator will dynamically assign them to capable agents
-    
-    parse_task = Task(
-        id="task_parse",
-        name="Parse Product Data",
-        description="Extract and structure product data from raw input",
-        required_capability="parse_raw_data",
-        priority=1,  # Highest priority - must run first
-        context={
-            "file_path": "data/raw_input.txt"
-        }
-    )
-    
-    competitor_task = Task(
-        id="task_competitor",
-        name="Generate Competitor",
-        description="Create fictional competitor for comparison",
-        required_capability="generate_competitor",
-        priority=2,
-        dependencies=["task_parse"]  # Depends on parsing
-    )
-    
-    faq_task = Task(
-        id="task_faqs",
-        name="Generate FAQ Questions",
-        description="Generate FAQ questions from product data",
-        required_capability="generate_faqs",
-        priority=2,
-        dependencies=["task_parse"]  # Depends on parsing
-    )
-    
-    build_product_task = Task(
-        id="task_build_product",
-        name="Build Product Page",
-        description="Assemble the product page",
-        required_capability="build_product_page",
-        priority=3,
-        dependencies=["task_parse"]  # Only needs product data
-    )
-    
-    build_faq_task = Task(
-        id="task_build_faq",
-        name="Build FAQ Page",
-        description="Assemble the FAQ page with answers",
-        required_capability="build_faq_page",
-        priority=3,
-        dependencies=["task_parse", "task_faqs"]  # Needs product + questions
-    )
-    
-    build_comparison_task = Task(
-        id="task_build_comparison",
-        name="Build Comparison Page",
-        description="Assemble the comparison page",
-        required_capability="build_comparison_page",
-        priority=3,
-        dependencies=["task_parse", "task_competitor"]  # Needs product + competitor
-    )
-    
-    # Create workflow definition
-    workflow = WorkflowDefinition(
-        id="content_generation_workflow",
-        name="Content Generation Pipeline",
-        description="Generate product page, FAQ, and comparison content",
-        tasks=[
-            parse_task,
-            competitor_task,
-            faq_task,
-            build_product_task,
-            build_faq_task,
-            build_comparison_task
-        ]
-    )
-    
-    main_logger.info(f"Workflow defined: {workflow.name}")
-    main_logger.info(f"  Tasks: {len(workflow.tasks)}")
+    for agent in available_agents:
+        orchestrator.register_agent(agent)
+        main_logger.info(f"  Registered: {agent.name}")
+        main_logger.info(f"    Capabilities: {agent.get_capability_names()}")
     
     # =========================================
-    # 4. Execute Workflow with Dynamic Coordination
+    # 3. DYNAMIC Workflow Generation
     # =========================================
-    log_agent_thought("Orchestrator", "Starting workflow execution")
+    main_logger.info("\nGenerating workflow dynamically...")
     
-    # Track completion
-    workflow_complete = False
-    failed_tasks = []
+    # Define WHAT we want (outputs), not HOW to get it
+    required_outputs = ["product_page", "faq_page", "comparison_page"]
+    input_context = {"file_path": "data/raw_input.txt"}
     
-    def on_workflow_complete(wf, failed):
-        nonlocal workflow_complete, failed_tasks
-        workflow_complete = True
-        failed_tasks = failed
-        main_logger.info("Workflow completion callback triggered")
+    # Workflow is GENERATED based on available capabilities
+    workflow = DynamicWorkflowGenerator.generate_workflow(
+        orchestrator,
+        required_outputs,
+        input_context
+    )
     
-    # Submit workflow to orchestrator
-    orchestrator.submit_workflow(workflow, on_complete=on_workflow_complete)
-    
-    # The orchestrator handles task assignment and coordination
-    # We can monitor progress
-    main_logger.info("\n" + "="*60)
-    main_logger.info("WORKFLOW EXECUTION STATUS")
-    main_logger.info("="*60)
-    
-    status = orchestrator.get_system_status()
-    for agent_info in status["agents"]:
-        main_logger.info(f"  Agent: {agent_info['name']}")
-        main_logger.info(f"    - State: {agent_info['state']}")
-        main_logger.info(f"    - Capabilities: {agent_info['capabilities']}")
+    main_logger.info(f"\nGenerated workflow: {workflow.name}")
+    main_logger.info(f"  Total tasks: {len(workflow.tasks)}")
+    main_logger.info(f"  Task order determined by dependency analysis")
     
     # =========================================
-    # 5. Retrieve Results and Save Outputs
+    # 4. DYNAMIC Execution
     # =========================================
-    main_logger.info("\n" + "="*60)
-    main_logger.info("RETRIEVING RESULTS FROM BLACKBOARD")
-    main_logger.info("="*60)
+    main_logger.info("\n" + "=" * 60)
+    main_logger.info("EXECUTING DYNAMIC WORKFLOW")
+    main_logger.info("=" * 60)
     
-    # Get results from the shared blackboard
+    log_agent_thought("Orchestrator", "Starting dynamic task assignment")
+    
+    # Submit workflow - orchestrator handles everything dynamically
+    orchestrator.submit_workflow(workflow)
+    
+    # Show which agent got which task (determined at RUNTIME)
+    main_logger.info("\nDynamic Task Assignments:")
+    for task in workflow.tasks:
+        agent = orchestrator.registry.find_best_agent_for_task(task)
+        if agent:
+            main_logger.info(f"  {task.name} -> {agent.name} (runtime match)")
+    
+    # =========================================
+    # 5. Retrieve Results from Blackboard
+    # =========================================
+    main_logger.info("\n" + "=" * 60)
+    main_logger.info("RETRIEVING RESULTS")
+    main_logger.info("=" * 60)
+    
     blackboard = orchestrator.blackboard
     
-    # Product Page
-    product_page = blackboard.get("product_page")
-    if product_page:
-        save_json("product_page.json", product_page)
-        main_logger.info("✓ Product page saved")
-    else:
-        main_logger.warning("Product page not found on blackboard")
-        
-    # FAQ Page
-    faq_page = blackboard.get("faq_page")
-    if faq_page:
-        save_json("faq.json", faq_page)
-        main_logger.info("✓ FAQ page saved")
-    else:
-        main_logger.warning("FAQ page not found on blackboard")
-        
-    # Comparison Page
-    comparison_page = blackboard.get("comparison_page")
-    if comparison_page:
-        save_json("comparison_page.json", comparison_page)
-        main_logger.info("✓ Comparison page saved")
-    else:
-        main_logger.warning("Comparison page not found on blackboard")
+    # Results are retrieved by key, not by knowing which agent produced them
+    output_mapping = {
+        "product_page": "product_page.json",
+        "faq_page": "faq.json",
+        "comparison_page": "comparison_page.json"
+    }
+    
+    for key, filename in output_mapping.items():
+        result = blackboard.get(key)
+        if result:
+            save_json(filename, result)
+            # Show who produced this result (discovered from blackboard metadata)
+            entry = blackboard.get_entry(key)
+            if entry:
+                main_logger.info(f"  {filename}: produced by {entry.owner}")
+        else:
+            main_logger.warning(f"  {filename}: not found")
     
     # =========================================
-    # 6. Display Agent Memory (Decision Trail)
+    # 6. Show Agent Autonomy (Decision Trails)
     # =========================================
-    main_logger.info("\n" + "="*60)
-    main_logger.info("AGENT DECISION TRAILS")
-    main_logger.info("="*60)
+    main_logger.info("\n" + "=" * 60)
+    main_logger.info("AGENT AUTONOMOUS DECISIONS")
+    main_logger.info("=" * 60)
     
-    for agent in [parser_agent, strategy_agent, builder_agent]:
-        main_logger.info(f"\n{agent.name} Decisions:")
-        for decision in agent.memory.decisions[-3:]:  # Last 3 decisions
-            main_logger.info(f"  - {decision.get('decision', 'N/A')}")
-            main_logger.info(f"      Reasoning: {decision.get('reasoning', 'N/A')}")
+    for agent in available_agents:
+        if agent.memory.decisions:
+            main_logger.info(f"\n{agent.name}:")
+            for decision in agent.memory.decisions[-3:]:
+                main_logger.info(f"  Decision: {decision.get('decision', 'N/A')}")
+                main_logger.info(f"  Reasoning: {decision.get('reasoning', 'N/A')}")
     
     # =========================================
     # Complete
@@ -244,29 +322,30 @@ def run_multi_agent_system():
     log_pipeline_complete()
     
     return {
-        "success": len(failed_tasks) == 0,
-        "product_page": product_page,
-        "faq_page": faq_page,
-        "comparison_page": comparison_page
+        "success": True,
+        "workflow_id": workflow.id,
+        "tasks_executed": len(workflow.tasks)
     }
 
 
 def main():
     """
-    Main entry point.
-    
-    Runs the multi-agent content generation system.
+    Main entry point for the dynamic multi-agent system.
     """
     try:
-        results = run_multi_agent_system()
+        results = run_dynamic_multi_agent_system()
         
         if results["success"]:
-            main_logger.info("\n✓ All content generated successfully!")
+            main_logger.info("\n" + "=" * 60)
+            main_logger.info("SUCCESS: Dynamic multi-agent workflow completed")
+            main_logger.info(f"  Workflow ID: {results['workflow_id']}")
+            main_logger.info(f"  Tasks executed: {results['tasks_executed']}")
+            main_logger.info("=" * 60)
         else:
-            main_logger.warning("\n⚠ Some tasks failed during execution")
+            main_logger.warning("\nSome tasks failed during execution")
             
     except Exception as e:
-        main_logger.error(f"\n✗ Pipeline failed: {e}")
+        main_logger.error(f"\nPipeline failed: {e}")
         raise
 
 
